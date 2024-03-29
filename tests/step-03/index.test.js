@@ -21,6 +21,7 @@ orderByFields: null,
        "hasAggregateWithoutGroupBy": false,
         "joinTable": null,
         "joinType": null,
+        "limit": null,
         whereClauses: []
     });
 });
