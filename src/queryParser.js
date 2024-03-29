@@ -1,8 +1,18 @@
+
 function parseQuery(query) {
     try {
 
         // Trim the query to remove any leading/trailing whitespaces
         query = query.trim();
+
+        // Initialize distinct flag
+        let isDistinct = false;
+
+        // Check for DISTINCT keyword and update the query
+        if (query.toUpperCase().includes('SELECT DISTINCT')) {
+            isDistinct = true;
+            query = query.replace('SELECT DISTINCT', 'SELECT');
+        }
 
         // Updated regex to capture LIMIT clause and remove it for further processing
         const limitRegex = /\sLIMIT\s(\d+)/i;
@@ -68,23 +78,24 @@ function parseQuery(query) {
             fields: fields.split(',').map(field => field.trim()),
             table: table.trim(),
             whereClauses,
+
+            orderByFields,
             joinType,
+            joinTable,
             joinCondition,
             groupByFields,
-            orderByFields,
-            joinTable,
             hasAggregateWithoutGroupBy,
-            limit
+            limit,
+            isDistinct
         };
     } catch (error) {
-        console.log(error.message);
         throw new Error(`Query parsing error: ${error.message}`);
     }
 }
 
 function checkAggregateWithoutGroupBy(query, groupByFields) {
     const aggregateFunctionRegex = /(\bCOUNT\b|\bAVG\b|\bSUM\b|\bMIN\b|\bMAX\b)\s*\(\s*(\*|\w+)\s*\)/i;
-    return (aggregateFunctionRegex.test(query)) && (!groupByFields);
+    return aggregateFunctionRegex.test(query) && !groupByFields;
 }
 
 function parseWhereClause(whereString) {
@@ -105,8 +116,8 @@ function parseJoinClause(query) {
 
     if (joinMatch) {
         return {
-            joinTable: joinMatch[2].trim(),
             joinType: joinMatch[1].trim(),
+            joinTable: joinMatch[2].trim(),
             joinCondition: {
                 left: joinMatch[3].trim(),
                 right: joinMatch[4].trim()
@@ -118,7 +129,7 @@ function parseJoinClause(query) {
 
         joinCondition: null,
         joinType: null,
-        joinTable: null
+        joinTable: null,
     };
 }
 
