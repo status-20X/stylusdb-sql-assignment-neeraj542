@@ -1,4 +1,6 @@
-
+/*
+Creating a Query Parser which can parse SQL `SELECT` Queries only.
+// */
 function parseQuery(query) {
     try {
 
@@ -78,12 +80,11 @@ function parseQuery(query) {
             fields: fields.split(',').map(field => field.trim()),
             table: table.trim(),
             whereClauses,
-
-            orderByFields,
-            joinType,
             joinTable,
             joinCondition,
             groupByFields,
+            orderByFields,
+            joinType,
             hasAggregateWithoutGroupBy,
             limit,
             isDistinct
@@ -101,12 +102,17 @@ function checkAggregateWithoutGroupBy(query, groupByFields) {
 function parseWhereClause(whereString) {
     const conditionRegex = /(.*?)(=|!=|>|<|>=|<=)(.*)/;
     return whereString.split(/ AND | OR /i).map(conditionString => {
-        const match = conditionString.match(conditionRegex);
-        if (match) {
-            const [, field, operator, value] = match;
-            return { field: field.trim(), operator, value: value.trim() };
+        if (conditionString.includes(' LIKE ')) {
+            const [field, pattern] = conditionString.split(/\sLIKE\s/i);
+            return { field: field.trim(), operator: 'LIKE', value: pattern.trim().replace(/^'(.*)'$/, '$1') };
+        } else {
+            const match = conditionString.match(conditionRegex);
+            if (match) {
+                const [, field, operator, value] = match;
+                return { field: field.trim(), operator, value: value.trim() };
+            }
+            throw new Error('Invalid WHERE clause format');
         }
-        throw new Error('Invalid WHERE clause format');
     });
 }
 
@@ -116,8 +122,8 @@ function parseJoinClause(query) {
 
     if (joinMatch) {
         return {
-            joinType: joinMatch[1].trim(),
             joinTable: joinMatch[2].trim(),
+            joinType: joinMatch[1].trim(),
             joinCondition: {
                 left: joinMatch[3].trim(),
                 right: joinMatch[4].trim()
@@ -126,7 +132,7 @@ function parseJoinClause(query) {
     }
 
     return {
-
+        
         joinCondition: null,
         joinType: null,
         joinTable: null,

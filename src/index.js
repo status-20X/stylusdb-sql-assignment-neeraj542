@@ -94,6 +94,13 @@ function evaluateCondition(row, clause) {
     const rowValue = parseValue(row[field]);
     let conditionValue = parseValue(value);
 
+    if (operator === 'LIKE') {
+        // Transform SQL LIKE pattern to JavaScript RegExp pattern
+        const regexPattern = '^' + value.replace(/%/g, '.*').replace(/_/g, '.') + '$';
+        const regex = new RegExp(regexPattern, 'i'); // 'i' for case-insensitive matching
+        return regex.test(row[field]);
+    }
+
     switch (operator) {
         case '=': return rowValue === conditionValue;
         case '!=': return rowValue !== conditionValue;
@@ -204,16 +211,15 @@ async function executeSELECTQuery(query) {
         if (joinTable && joinCondition) {
             const joinData = await readCSV(`${joinTable}.csv`);
             switch (joinType.toUpperCase()) {
+                case 'INNER':
+                    data = performInnerJoin(data, joinData, joinCondition, fields, table);
+                    break;
                 case 'LEFT':
                     data = performLeftJoin(data, joinData, joinCondition, fields, table);
                     break;
                 case 'RIGHT':
                     data = performRightJoin(data, joinData, joinCondition, fields, table);
                     break;
-                case 'INNER':
-                    data = performInnerJoin(data, joinData, joinCondition, fields, table);
-                    break;
-                
                 default:
                     throw new Error(`Unsupported JOIN type: ${joinType}`);
             }
@@ -233,12 +239,12 @@ async function executeSELECTQuery(query) {
                 if (match) {
                     const [, aggFunc, aggField] = match;
                     switch (aggFunc.toUpperCase()) {
+
+                        case 'MIN':
+                            result[field] = Math.min(...filteredData.map(row => parseFloat(row[aggField])));
+                            break;
                         case 'COUNT':
                             result[field] = filteredData.length;
-                            break;
-
-                        case 'MAX':
-                            result[field] = Math.max(...filteredData.map(row => parseFloat(row[aggField])));
                             break;
                         case 'SUM':
                             result[field] = filteredData.reduce((acc, row) => acc + parseFloat(row[aggField]), 0);
@@ -246,8 +252,8 @@ async function executeSELECTQuery(query) {
                         case 'AVG':
                             result[field] = filteredData.reduce((acc, row) => acc + parseFloat(row[aggField]), 0) / filteredData.length;
                             break;
-                        case 'MIN':
-                            result[field] = Math.min(...filteredData.map(row => parseFloat(row[aggField])));
+                        case 'MAX':
+                            result[field] = Math.max(...filteredData.map(row => parseFloat(row[aggField])));
                             break;
                         // Additional aggregate functions can be handled here
                     }
@@ -264,9 +270,8 @@ async function executeSELECTQuery(query) {
             if (orderByFields) {
                 orderedResults = groupResults.sort((a, b) => {
                     for (let { fieldName, order } of orderByFields) {
-                        if (a[fieldName] > b[fieldName]) return order === 'ASC' ? 1 : -1;
                         if (a[fieldName] < b[fieldName]) return order === 'ASC' ? -1 : 1;
-
+                        if (a[fieldName] > b[fieldName]) return order === 'ASC' ? 1 : -1;
                     }
                     return 0;
                 });
@@ -274,19 +279,16 @@ async function executeSELECTQuery(query) {
             if (limit !== null) {
                 groupResults = groupResults.slice(0, limit);
             }
-
-            return (groupResults);
+            return groupResults;
         } else {
 
             // Order them by the specified fields
             let orderedResults = groupResults;
-
             if (orderByFields) {
                 orderedResults = groupResults.sort((a, b) => {
                     for (let { fieldName, order } of orderByFields) {
-                        if (a[fieldName] > b[fieldName]) return order === 'ASC' ? 1 : -1;
-
                         if (a[fieldName] < b[fieldName]) return order === 'ASC' ? -1 : 1;
+                        if (a[fieldName] > b[fieldName]) return order === 'ASC' ? 1 : -1;
                     }
                     return 0;
                 });
@@ -299,7 +301,7 @@ async function executeSELECTQuery(query) {
                     // Assuming 'field' is just the column name without table prefix
                     selectedRow[field] = row[field];
                 });
-                return (selectedRow);
+                return selectedRow;
             });
 
             // Remove duplicates if specified
@@ -313,7 +315,7 @@ async function executeSELECTQuery(query) {
                 limitResults = distinctResults.slice(0, limit);
             }
 
-            return (limitResults);
+            return limitResults;
 
 
         }
