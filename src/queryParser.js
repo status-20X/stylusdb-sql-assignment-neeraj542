@@ -1,4 +1,6 @@
-
+/*
+Creating a Query Parser which can parse SQL `SELECT` Queries only.
+// */
 function parseSelectQuery(query) {
     try {
 
@@ -79,14 +81,13 @@ function parseSelectQuery(query) {
             table: table.trim(),
             whereClauses,
             joinType,
-
-            isDistinct,
             joinTable,
             joinCondition,
             groupByFields,
             orderByFields,
             hasAggregateWithoutGroupBy,
             limit,
+            isDistinct
         };
     } catch (error) {
         throw new Error(`Query parsing error: ${error.message}`);
@@ -121,22 +122,19 @@ function parseJoinClause(query) {
 
     if (joinMatch) {
         return {
-
-            joinTable: joinMatch[2].trim(),
             joinType: joinMatch[1].trim(),
+            joinTable: joinMatch[2].trim(),
             joinCondition: {
-                right: joinMatch[4].trim(),
                 left: joinMatch[3].trim(),
-
+                right: joinMatch[4].trim()
             }
         };
     }
 
     return {
+        joinType: null,
         joinTable: null,
-        joinCondition: null,
-        joinType: null
-
+        joinCondition: null
     };
 }
 
